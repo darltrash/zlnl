@@ -39,4 +39,4 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: Linux GLIBC x86_64 build
-          path: ./zlnl
+          path: ./zlnl/zlnl
