@@ -23,6 +23,11 @@ jobs:
         run: |
           git clone https://github.com/edubart/nelua-lang.git
           sudo make -C nelua-lang/ install
+      
+      - name: Setup Zig
+        uses: goto-bus-stop/setup-zig@v1.3.0
+        with:
+          version: 0.8.0
           
       - name: Clone and build ZLNL
         run: |
@@ -30,7 +35,8 @@ jobs:
           cd zlnl
           make build
           
-      - uses: actions/upload-artifact@v2
+      - name: Upload the artifacts
+        uses: actions/upload-artifact@v2
         with:
           name: Linux GLIBC x86_64 build
           path: ./zlnl
