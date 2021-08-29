@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+  
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      
+      - name: Download dependencies and more
+        run: sudo apt install -y build-essential git gcc gdb
+        
+      - name: Build and install Nelua
+        run: |
+          git clone https://github.com/edubart/nelua-lang.git
+          sudo make -C nelua-lang/ install
+          
+      - name: Clone and build ZLNL
+        run: |
+          git clone https://github.com/darltrash/zlnl
+          cd zlnl
+          make build
+          
+      - uses: actions/upload-artifact@v2
+        with:
+          name: Linux GLIBC x86_64 build
+          path: ./zlnl
