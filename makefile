@@ -1,4 +1,4 @@
-CC=zig cc
+CC=gcc
 
 generate:
 	nelua -Mj "main.nelua" --output coutput/zlnl.c
