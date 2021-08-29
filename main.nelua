@@ -1,0 +1,152 @@
+--[========================================================================[
+
+    ZLNL: A minimalist RPG game engine made in nelua for c99
+    ________________________________________________________________________
+
+    Copyright (c) 2020      Nelson "darltrash" Lopez
+
+    This software is provided 'as-is', without any express or implied warranty. 
+    In no event will the authors be held liable for any damages arising from the use of this software.
+
+    Permission is granted to anyone to use this software for any purpose, 
+    including commercial applications, and to alter it and redistribute it freely, 
+    subject to the following restrictions:
+
+    1. The origin of this software must not be misrepresented; 
+        you must not claim that you wrote the original software. 
+        If you use this software in a product, an acknowledgment 
+        in the product documentation would be appreciated but is not required.
+
+    2. Altered source versions must be plainly marked as such, 
+        and must not be misrepresented as being the original software.
+
+    3. This notice may not be removed or altered from any source distribution.
+
+]========================================================================]--
+
+##[[
+    function embedFile(file) -- Sorry for trying to clone zig in here lmao
+        assert(file, "ERROR IN EMBEDFILE, NO FILE SPECIFIED!")
+        local outfile = io.open(file, rb)
+        local out = outfile:read("*all")
+        outfile:close()
+        return out
+    end
+]]
+
+require "libs.sdl2"
+require "libs.tinyfx"
+require "libs.math_extra"
+require "iterators"
+
+defer SDL_Quit() end
+
+local window = SDL_CreateWindow("sdl2", 0, 0, 640, 420, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE)
+defer SDL_DestroyWindow(window) end;
+
+SDL_GL_SetAttribute(SDL_GL_RED_SIZE,    8);
+SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE,  8);
+SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE,   8);
+SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE,  0);
+SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 16);
+
+SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
+SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
+SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
+
+local context = SDL_GL_CreateContext(window);
+local g_width: cint = 0
+local g_height: cint = 0
+
+SDL_GL_GetDrawableSize(window, &g_width, &g_height)
+SDL_GL_MakeCurrent(window, context);
+SDL_GL_SetSwapInterval(1);
+
+tfx_set_platform_data({
+    use_gles = true;
+    context_version = 31;
+    gl_get_proc_address = SDL_GL_GetProcAddress;
+});
+
+tfx_reset((@uint16)(g_width), (@uint16)(g_height), 
+    tfx_reset_flags.NONE | tfx_reset_flags.DEBUG_OVERLAY | tfx_reset_flags.DEBUG_OVERLAY_STATS
+    | tfx_reset_flags.REPORT_GPU_TIMINGS
+);
+defer tfx_shutdown() end
+
+local back = 0;
+tfx_view_set_clear_color(back, 0x16161bff);
+tfx_view_set_clear_depth(back, 1.0);
+tfx_view_set_depth_test(back, tfx_depth_test.LT);
+tfx_view_set_name(back, "Forward Pass");
+
+local shader <comptime> = #[embedFile("shaders/main.glsl")]#
+
+local attribs: [2]cstring = {"a_position", "a_texCoord"}
+local program = tfx_program_new(shader, shader, &attribs, #attribs);
+
+-- Square
+local verts: []float32 = {
+--  X    Y    Z         U    V
+    0.0, 1.0, 0.0,      0.0, 1.0,
+    1.0, 0.0, 0.0,      1.0, 0.0,
+    0.0, 0.0, 0.0,      0.0, 0.0, 
+    0.0, 1.0, 0.0,      0.0, 1.0,
+    1.0, 1.0, 0.0,      1.0, 1.0,
+    1.0, 0.0, 0.0,      1.0, 0.0
+}
+
+local fmt = tfx_vertex_format_start();
+tfx_vertex_format_add(&fmt, 0, 3, false, tfx_component_type.FLOAT);
+tfx_vertex_format_add(&fmt, 1, 2, false, tfx_component_type.FLOAT);
+tfx_vertex_format_end(&fmt);
+local vbo = tfx_buffer_new(&verts, (#verts*#float32), &fmt, tfx_buffer_flags.NONE);
+
+local projection = mat4.from_ortho(0, g_width, 0, g_height, -10, 10)
+local projectionUniform = tfx_uniform_new("projection", tfx_uniform_type.MAT4, 1)
+tfx_set_uniform(&projectionUniform, &projection.data, 1);
+
+local model = mat4.new():scale(vec3{x=30, y=30, z=1}):translate(vec3{x=200, y=0, z=5})
+local modelUniform = tfx_uniform_new("model", tfx_uniform_type.MAT4, 1)
+tfx_set_uniform(&modelUniform, &model.data, 1);
+
+local running = true
+while running do
+    tfx_set_uniform(&modelUniform, &model.data, 1);
+    tfx_set_uniform(&projectionUniform, &projection.data, 1);
+
+    local event: SDL_Event
+    while (SDL_PollEvent(&event) == 1) do
+        switch event.type
+        case SDL_QUIT then
+            running = false
+        case SDL_WINDOWEVENT then
+            if event.window.event == SDL_WINDOWEVENT_RESIZED then
+                SDL_GL_GetDrawableSize( window, &g_width, &g_height )
+                tfx_reset((@uint16)(g_width), (@uint16)(g_height), 
+                    tfx_reset_flags.NONE | tfx_reset_flags.DEBUG_OVERLAY | tfx_reset_flags.DEBUG_OVERLAY_STATS
+                    | tfx_reset_flags.REPORT_GPU_TIMINGS
+                );
+                projection = mat4.from_ortho(0, g_width, g_height, 0, -10, 10)
+                tfx_set_uniform(&projectionUniform, &projection.data, 1);
+            end
+        end
+    end
+
+    tfx_view_set_clear_color(back, 0x16161bff);
+    tfx_view_set_clear_depth(back, 1.0);
+    tfx_view_set_name(back, "Forward Pass");
+    tfx_set_vertices(&vbo, 6);
+    
+	tfx_set_state(0
+		| TFX_STATE_RGB_WRITE
+		| TFX_STATE_ALPHA_WRITE
+		| TFX_STATE_BLEND_ALPHA
+	);
+    
+	tfx_submit(back, program, false);
+
+    tfx_frame();
+    SDL_GL_SwapWindow(window);
+end

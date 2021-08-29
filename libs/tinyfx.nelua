@@ -1,0 +1,321 @@
+##[[
+    cinclude 'tinyfx.h'
+]]
+
+global tfx_buffer_flags: type <cimport, nodecl> = @enum(cint){
+	NONE = 0,
+	INDEX_32 = 1 << 0,
+	MUTABLE = 1 << 1,
+} 
+
+global tfx_depth_test: type <cimport, nodecl> = @enum(cint) {
+    NONE = 0,
+	LT,
+	GT,
+	EQ
+}
+
+global TFX_STATE_CULL_CW         : cint <comptime> = 1 << 00
+global TFX_STATE_CULL_CCW        : cint <comptime> = 1 << 01
+global TFX_STATE_DEPTH_WRITE     : cint <comptime> = 1 << 02
+global TFX_STATE_RGB_WRITE       : cint <comptime> = 1 << 03
+global TFX_STATE_ALPHA_WRITE     : cint <comptime> = 1 << 04
+global TFX_STATE_BLEND_ALPHA     : cint <comptime> = 1 << 05
+global TFX_STATE_DRAW_POINTS     : cint <comptime> = 1 << 06
+global TFX_STATE_DRAW_LINES      : cint <comptime> = 1 << 07
+global TFX_STATE_DRAW_LINE_STRIP : cint <comptime> = 1 << 08
+global TFX_STATE_DRAW_LINE_LOOP  : cint <comptime> = 1 << 09
+global TFX_STATE_DRAW_TRI_STRIP  : cint <comptime> = 1 << 10
+global TFX_STATE_DRAW_TRI_FAN    : cint <comptime> = 1 << 11
+global TFX_STATE_MSAA            : cint <comptime> = 1 << 12
+global TFX_STATE_WIREFRAME       : cint <comptime> = 1 << 13
+global TFX_STATE_DEFAULT         : cint <comptime> = 0
+    | TFX_STATE_CULL_CCW
+    | TFX_STATE_MSAA
+    | TFX_STATE_DEPTH_WRITE
+    | TFX_STATE_RGB_WRITE
+    | TFX_STATE_ALPHA_WRITE
+    | TFX_STATE_BLEND_ALPHA
+
+--////////////////////////////////////////////////////////    
+
+global TFX_CUBE_MAP_POSITIVE_X: cint <comptime> = 0
+global TFX_CUBE_MAP_NEGATIVE_X: cint <comptime> = 1
+global TFX_CUBE_MAP_POSITIVE_Y: cint <comptime> = 2
+global TFX_CUBE_MAP_NEGATIVE_Y: cint <comptime> = 3
+global TFX_CUBE_MAP_POSITIVE_Z: cint <comptime> = 4
+global TFX_CUBE_MAP_NEGATIVE_Z: cint <comptime> = 5
+
+--////////////////////////////////////////////////////////    
+
+global TFX_TEXTURE_FILTER_POINT   : cint <comptime> = 1 << 00
+global TFX_TEXTURE_FILTER_LINEAR  : cint <comptime> = 1 << 01
+global TFX_TEXTURE_CPU_WRITABLE   : cint <comptime> = 1 << 03
+global TFX_TEXTURE_GEN_MIPS       : cint <comptime> = 1 << 05
+global TFX_TEXTURE_RESERVE_MIPS   : cint <comptime> = 1 << 06
+global TFX_TEXTURE_CUBE           : cint <comptime> = 1 << 07
+global TFX_TEXTURE_MSAA_SAMPLE    : cint <comptime> = 1 << 08
+global TFX_TEXTURE_MSAA_X2        : cint <comptime> = 1 << 09
+global TFX_TEXTURE_MSAA_X4        : cint <comptime> = 1 << 10
+global TFX_TEXTURE_EXTERNAL       : cint <comptime> = 1 << 11
+
+global tfx_reset_flags: type <cimport, nodecl> = @enum(cint) {
+    NONE = 0,
+	MAX_ANISOTROPY = 1 << 0,
+	REPORT_GPU_TIMINGS = 1 << 1,
+	DEBUG_OVERLAY = 1 << 2,
+	DEBUG_OVERLAY_STATS = 1 << 3
+}
+
+global tfx_view_flags: type <cimport, nodecl> = @enum(cint) {
+    NONE = 0,
+	INVALIDATE = 1 << 0,
+	FLUSH = 1 << 1,
+	SORT_SEQUENTIAL = 1 << 2,
+	DEFAULT = 1 << 2
+}
+
+global tfx_format: type <cimport, nodecl> = @enum(cint) {
+    RGB565 = 0,
+	RGBA8,
+	SRGB8,
+	SRGB8_A8,
+	RGB10A2,
+	RG11B10F,
+	RGB16F,
+	RGBA16F,
+	RGB565_D16,
+	RGBA8_D16,
+	RGBA8_D24,
+	R16F,
+	R32UI,
+	R32F,
+	RG16F,
+	RG32F,
+	D16,
+	D24,
+	D32,
+	D32F,
+}
+
+-- Neil Wolfkid: I'm not entirely sure if this is correct...
+global tfx_program: type <cimport, nodecl> = cuint
+
+global tfx_uniform_type: type <cimport, nodecl> = @enum(cint) {
+    INT = 0,
+	FLOAT,
+	VEC2,
+	VEC3,
+	VEC4,
+	MAT2,
+	MAT3,
+	MAT4
+}
+
+global tfx_severity: type <cimport, nodecl> = @enum(cint) {
+    TFX_SEVERITY_INFO = 0,
+	TFX_SEVERITY_WARNING,
+	TFX_SEVERITY_ERROR,
+	TFX_SEVERITY_FATAL
+}
+
+global tfx_component_type: type <cimport, nodecl> = @enum(cint) {
+	FLOAT = 0,
+	BYTE,
+	UBYTE,
+	SHORT,
+	USHORT,
+	SKIP,
+}
+
+-- ////////////////////////////////////////////////////////////////////
+
+global tfx_platform_data: type <cimport, nodecl> = @record {
+    use_gles: boolean,
+    context_version: cint,
+	gl_get_proc_address: function(cstring): pointer,
+	info_log: *function(cstring, tfx_severity): void,
+}
+
+global tfx_uniform: type <cimport, nodecl> = @record {
+	fdata: float32,
+	idata: cint,
+	data: uint8,
+
+    name: cstring,
+	type: tfx_uniform_type,
+	count: cint,
+	last_count: cint,
+	size: csize;
+}
+
+global tfx_texture: type <cimport, nodecl> = @record {
+	gl_ids: [2]cuint,
+	gl_msaa_id: cuint,
+	gl_idx: cuint,
+	gl_count: cuint,
+
+	width: uint16,
+	height: uint16,
+	depth: uint16,
+	mic_count: uint16,
+	format: tfx_format,
+
+	is_depth: boolean,
+	is_stencil: boolean,
+	dirty: boolean,
+	flags: uint16,
+	_pad0: uint16,
+	internal: *void
+}
+
+global tfx_canvas: type <cimport, nodecl> = @record {
+	gl_fbo: [2]cuint,
+	attacchments: [8]tfx_texture,
+	allocated: uint32,
+	width: uint16,
+	height: uint16,
+	current_width: uint16,
+	current_height: uint16,
+	current_mip: cint,
+
+	msaa: boolean,
+	cube: boolean,
+	own_attachments: boolean,
+	reconfigure: boolean
+}
+
+global tfx_vertex_component: type <cimport, nodecl> = @record {
+	offset: csize,
+	size: csize,
+	normalized: boolean,
+	type: tfx_component_type
+}
+
+global tfx_vertex_format: type <cimport, nodecl> = @record {
+	components: [8]tfx_vertex_component,
+	count: uint8,
+	component_mask: uint8,
+	_pad0: [2]uint8,
+	stride: csize
+}
+
+global tfx_buffer: type <cimport, nodecl> = @record {
+	gl_id: cuint,
+	dirty: boolean,
+	has_format: boolean,
+	flags: tfx_buffer_flags,
+	format: tfx_vertex_format,
+	internal: *void
+}
+
+global tfx_transient_buffer: type <cimport, nodecl> = @record {
+	has_format: boolean,
+	format: tfx_vertex_format,
+	data: *void,
+	num: uint16,
+	offset: uint32
+}
+
+global tfx_timing_info: type <cimport, nodecl> = @record {
+	time: uint64,
+	id: uint8,
+	_pad0: [3]uint8,
+	name: cstring
+}
+
+global tfx_stats: type <cimport, nodecl> = @record {
+	draws: uint32,
+	blits: uint32,
+	num_timings: uint32,
+	timings: *tfx_timing_info,
+}
+
+global tfx_caps: type <cimport, nodecl> = @record {
+	compute: boolean,
+	float_canvas: boolean,
+	multisample: boolean,
+	debug_marker: boolean,
+	debug_output: boolean,
+	memory_info: boolean,
+	instancing: boolean,
+	seamless_cubemap: boolean,
+	anisotropic_filtering: boolean,
+	multibind: boolean
+} 
+
+global function tfx_debug_print(baserow: cint, basecol: cint, bg_fg: uint16, autowrap: cint, str: cstring): void <cimport, nodecl> end
+global function tfx_debug_blit_rgba(x: cint, y: cint, w: cint, h: cint, pixels: *uint32): void <cimport, nodecl> end
+global function tfx_debug_blit_pal(x: cint, y: cint, w: cint, h: cint, pixels: *uint8): void <cimport, nodecl> end
+global function tfx_debug_setPalette(palette: *uint32): void <cimport, nodecl> end
+
+global function tfx_set_platform_data(pd: tfx_platform_data): void <cimport, nodecl> end
+
+global function tfx_get_caps(): tfx_caps <cimport, nodecl> end
+global function tfx_dump_caps(): void <cimport, nodecl> end
+global function tfx_reset(width: uint16, height: uint16, flags: tfx_reset_flags): void <cimport, nodecl> end
+global function tfx_shutdown(): void <cimport, nodecl> end
+
+global function tfx_vertex_format_start(): tfx_vertex_format <cimport, nodecl> end
+global function tfx_vertex_format_add(fmt: *tfx_vertex_format, slot: uint8, count: csize, normalized: boolean, type: tfx_component_type): void <cimport, nodecl> end
+global function tfx_vertex_format_end(fmt: *tfx_vertex_format): void <cimport, nodecl> end
+global function tfx_vertex_format_offset(fmt: *tfx_vertex_format, slot: uint8): csize <cimport, nodecl> end
+
+global function tfx_transient_buffer_get_available(fmt: *tfx_vertex_format): uint32 <cimport, nodecl> end
+global function tfx_transient_buffer_new(fmt: *tfx_vertex_format, num_verts: uint16): tfx_transient_buffer <cimport, nodecl> end
+
+global function tfx_buffer_new(data: *[0]float32, size: csize, format: *tfx_vertex_format, flags: tfx_buffer_flags): tfx_buffer <cimport, nodecl> end
+global function tfx_buffer_update(buf: *tfx_buffer, data: *void, offset: uint32, size: csize): void <cimport, nodecl> end
+global function tfx_buffer_free(buf: *tfx_buffer): void <cimport, nodecl> end
+
+global function tfx_texture_new(w: uint16, h: uint16, layers: uint16, data: *void, format: tfx_format, flags: uint16): tfx_texture <cimport, nodecl> end
+global function tfx_texture_update(tex: *tfx_texture, data: *void): void <cimport, nodecl> end
+global function tfx_texture_free(tex: *tfx_texture): void <cimport, nodecl> end
+global function tfx_get_texture(canvas: *tfx_canvas, index: uint8): tfx_texture <cimport, nodecl> end
+
+global function tfx_canvas_new(w: uint16, h: uint16, format: tfx_format, flags: uint16): tfx_canvas <cimport, nodecl> end
+global function tfx_canvas_free(c: *tfx_canvas): void <cimport, nodecl> end
+global function tfx_canvas_attachments_new(claim_attachments: boolean, count: cint, attachments: *tfx_texture): tfx_canvas <cimport, nodecl> end
+
+global function tfx_view_set_name(id: uint8, name: cstring): void <cimport, nodecl> end
+global function tfx_view_set_canvas(id: uint8, canvas: *tfx_canvas): void <cimport, nodecl> end
+global function tfx_view_set_flags(id: uint8, flags: tfx_view_flags): void <cimport, nodecl> end
+global function tfx_view_set_clear_color(id: uint8, color: cuint): void <cimport, nodecl> end
+global function tfx_view_set_clear_depth(id: uint8, depth: float32): void <cimport, nodecl> end
+global function tfx_view_set_depth_test(id: uint8, mode: tfx_depth_test): void <cimport, nodecl> end
+global function tfx_view_set_scissor(id: uint8, x: uint16, y: uint16, w: uint16, h: uint16): void <cimport, nodecl> end
+
+global function tfx_view_set_viewports(id: uint8, count: cint, viewports: **uint16): void <cimport, nodecl> end
+global function tfx_view_set_instance_mul(id: uint8, factor: cuint): void <cimport, nodecl> end
+global function tfx_view_get_canvas(id: uint8): *tfx_canvas <cimport, nodecl> end
+global function tfx_view_get_width(id: uint8): uint16 <cimport, nodecl> end
+global function tfx_view_get_height(id: uint8): uint16 <cimport, nodecl> end
+global function tfx_view_get_dimensions(id: uint8, w: *uint16, h: *uint16): void <cimport, nodecl> end
+
+global function tfx_program_new(vss: cstring, fss: cstring, attribs: *[0]cstring, attrib_count: cint): tfx_program <cimport, nodecl> end
+global function tfx_program_len_new(vss: cstring, vss_len: cint, fss: cstring, fss_len: cint, attribs: [6]cstring, attrib_count: cint): tfx_program <cimport, nodecl> end
+global function tfx_program_gs_new(gss: cstring, vss: cstring, fss: cstring, attribs: [6]cstring, attrib_count: cint): tfx_program <cimport, nodecl> end
+global function tfx_program_gs_len_new(gss: cstring, gss_len: cint, vss: cstring, vss_len: cint, fss: cstring, fss_len: cint, attribs: [6]cstring, attrib_count: cint): tfx_program <cimport, nodecl> end
+global function tfx_program_cs_new(css: cstring): tfx_program <cimport, nodecl> end
+global function tfx_program_cs_len_new(css: cstring, css_len: cint): tfx_program <cimport, nodecl> end
+
+global function tfx_uniform_new(name: cstring, type: tfx_uniform_type, count: cint): tfx_uniform <cimport, nodecl> end
+
+global function tfx_set_transient_buffer(tb: tfx_transient_buffer): void <cimport, nodecl> end
+global function tfx_set_uniform(uniform: *tfx_uniform, data: *[0]float32, count: cint): void <cimport, nodecl> end
+global function tfx_set_uniform_int(uniform: *tfx_uniform, data: *float64, count: cint): void <cimport, nodecl> end
+--global function tfx_set_callback(cb: tfx_draw_callback): void <cimport, nodecl> end
+global function tfx_set_state(flags: uint64): void <cimport, nodecl> end
+global function tfx_set_scissor(x: uint16, y: uint16, w: uint16, h: uint16): void <cimport, nodecl> end
+global function tfx_set_texture(uniform: *tfx_uniform, tex: *tfx_texture, slot: uint8): void <cimport, nodecl> end
+global function tfx_set_buffer(buf: *tfx_buffer, slot: uint8, write: boolean): void <cimport, nodecl> end
+global function tfx_set_image(uniform: *tfx_uniform, tex: *tfx_texture, slot: uint8, mip: uint8, write: boolean): void <cimport, nodecl> end
+global function tfx_set_vertices(vbo: *tfx_buffer, count: cint): void <cimport, nodecl> end
+global function tfx_set_indices(ibo: *tfx_buffer, count: cint, offset: cint): void <cimport, nodecl> end
+
+global function tfx_dispatch(id: uint8, program: tfx_program, x: uint32, y: uint32, z: uint32): void <cimport, nodecl> end
+global function tfx_submit(id: uint8, program: tfx_program, retain: boolean): void <cimport, nodecl> end
+global function tfx_touch(id: uint8): void <cimport, nodecl> end
+global function tfx_blit(src: uint8, dst: uint8, x: uint16, y: uint16, w: uint16, h: uint16, mip: cint): void <cimport, nodecl> end
+
+global function tfx_frame(): tfx_stats <cimport, nodecl> end

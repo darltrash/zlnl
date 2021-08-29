@@ -1,0 +1,321 @@
+##[[
+    cinclude 'math_extra.h'
+]]
+
+require "math"
+require "iterators"
+
+global vec3 = @record{
+  x: number,
+  y: number,
+  z: number
+}
+## vec3.value.is_vec3 = true
+
+local is_vec3_or_scalar = #[concept(function(b)
+  return b.type.is_vec3 or b.type.is_scalar
+end)]#
+
+function vec3.__add(a: is_vec3_or_scalar, b: is_vec3_or_scalar): vec3 <inline,nosideeffect>
+  ## if b.type.is_scalar then
+    return vec3{a.x+b, a.y+b, a.z+b}
+  ## elseif a.type.is_scalar then
+    return vec3{a+b.x, a+b.y, a+b.z}
+  ## else
+    return vec3{a.x+b.x, a.y+b.y, a.z+b.z}
+  ## end
+end
+
+function vec3.__sub(a: is_vec3_or_scalar, b: is_vec3_or_scalar): vec3 <inline,nosideeffect>
+  ## if b.type.is_scalar then
+    return vec3{a.x-b, a.y-b, a.z-b}
+  ## elseif a.type.is_scalar then
+    return vec3{a-b.x, a-b.y, a-b.z}
+  ## else
+    return vec3{a.x-b.x, a.y-b.y, a.z-b.z}
+  ## end
+end
+
+function vec3.__mul(a: is_vec3_or_scalar, b: is_vec3_or_scalar): vec3 <inline,nosideeffect>
+  ## if b.type.is_scalar then
+    return vec3{a.x*b, a.y*b, a.z*b}
+  ## elseif a.type.is_scalar then
+    return vec3{a*b.x, a*b.y, a*b.z}
+  ## else
+    return vec3{a.x*b.x, a.y*b.y, a.z*b.z}
+  ## end
+end
+
+function vec3.__div(a: is_vec3_or_scalar, b: is_vec3_or_scalar): vec3 <inline,nosideeffect>
+  ## if b.type.is_scalar then
+    local k: number = 1 / b
+    return vec3{a.x*k, a.y*k, a.z*k}
+  ## elseif a.type.is_scalar then
+    local k: number = 1 / a
+    return vec3{k*b.x, k*b.y, k*b.z}
+  ## else
+    return vec3{a.x/b.x, a.y/b.y, a.z/b.z}
+  ## end
+end
+
+function vec3.__unm(a: vec3): vec3 <inline,nosideeffect>
+  return vec3{-a.x, -a.y, -a.z}
+end
+
+function vec3.min(a: vec3, b: vec3): vec3 <inline,nosideeffect>
+  return vec3{math.min(a.x, b.x), math.min(a.y, b.y), math.min(a.z, b.z)}
+end
+
+function vec3.dot(a: vec3, b: vec3): number <inline,nosideeffect>
+  return a.x*b.x + a.y*b.y + a.z*b.z
+end
+
+function vec3.cross(a: vec3, b: vec3): vec3 <inline,nosideeffect>
+  return vec3{a.y*b.z - a.z*b.y, a.z*b.x - a.x*b.z, a.x*b.y - a.y*b.x}
+end
+
+function vec3.sqrt(a: vec3): vec3 <inline,nosideeffect>
+  return vec3{math.sqrt(a.x), math.sqrt(a.y), math.sqrt(a.z)}
+end
+
+function vec3.squaredlength(v: vec3): number <inline,nosideeffect>
+  return v.x*v.x + v.y*v.y + v.z*v.z
+end
+
+function vec3.length(v: vec3): number <inline,nosideeffect>
+  return math.sqrt(vec3.squaredlength(v))
+end
+
+function vec3.__len(v: vec3): number <inline,nosideeffect>
+  return math.sqrt(vec3.squaredlength(v))
+end
+
+function vec3.unit(v: vec3): vec3 <inline,nosideeffect>
+  return v / #v
+end
+
+function vec3.lerp(a: vec3, b: vec3, t: number): vec3 <inline,nosideeffect>
+  return a * (1-t) + b * t
+end
+
+function vec3.scale(a: vec3, b: number): vec3 <inline,nosideeffect> 
+	return vec3{
+		x = a.x * b,
+		y = a.y * b,
+		z = a.z * b
+  }
+end
+
+function vec3.is_zero(a: vec3): boolean <inline,nosideeffect>
+	return a.x==0 or a.y==0 or a.z==0
+end
+
+function vec3.normalize(a: vec3): vec3 <inline,nosideeffect>
+  if a:is_zero() then
+		return vec3{x=0, y=0, z=0}
+	end
+	return a:scale(1 / #a)
+end
+
+function vec3.print(v: vec3) 
+  print(v.x, v.y, v.z)
+end
+
+function vec3.rotvec(v: vec3, axis: vec3, theta: number): vec3 <inline,nosideeffect>
+  local n = vec3.unit(axis)
+  local w = vec3.cross(n, v)
+  local sint, cost = math.sin(theta), math.cos(theta)
+  local ns = vec3.dot(v, n) * (1 - cost)
+  return n * ns + w * sint + v * cost
+end
+
+-- ///////////////////////////////////////////////////////////
+
+global mat4: type <cimport, nodecl> = @record{
+  data: [16]float32
+}
+
+function mat4.new(): mat4 <inline>
+  return mat4{
+    data = {
+      1, 0, 0, 0,
+      0, 1, 0, 0,
+      0, 0, 1, 0,
+      0, 0, 0, 1
+    }
+  }
+end
+
+local tmp = mat4.new()
+
+function mat4.print(a: mat4) <inline>
+  print(a.data[0],  a.data[1],  a.data[2],  a.data[3])
+  print(a.data[4],  a.data[5],  a.data[6],  a.data[7])
+  print(a.data[8],  a.data[9],  a.data[10], a.data[11])
+  print(a.data[12], a.data[13], a.data[14], a.data[15])
+end
+
+function mat4.identity(a: *mat4) <inline>
+  a.data[0],  a.data[1],  a.data[2],  a.data[3]  = 1, 0, 0, 0
+  a.data[4],  a.data[5],  a.data[6],  a.data[7]  = 0, 1, 0, 0
+  a.data[8],  a.data[9],  a.data[10], a.data[11] = 0, 0, 1, 0
+  a.data[12], a.data[13], a.data[14], a.data[15] = 0, 0, 0, 1
+end
+
+function mat4.from_angle_axis(angle: number, axis: vec3): mat4 <inline>
+  local l = #axis
+  if l == 0 then
+    return mat4.new()
+  end
+
+  local x, y, z = axis.x / l, axis.y / l, axis.z / l
+  local c = math.cos(angle)
+  local s = math.sin(angle)
+
+  return mat4 {
+    data = {
+      x*x*(1-c)+c,   y*x*(1-c)+z*s, x*z*(1-c)-y*s, 0,
+      x*y*(1-c)-z*s, y*y*(1-c)+c,   y*z*(1-c)+x*s, 0,
+      x*z*(1-c)+y*s, y*z*(1-c)-x*s, z*z*(1-c)+c,   0,
+      0, 0, 0, 1
+    }
+  }
+end
+
+function mat4.from_direction(direction: vec3, up: vec3): mat4 <inline>
+  local forward = direction:normalize()
+  local side = forward:cross(up):normalize()
+  local new_up = side:cross(forward):normalize()
+
+  local out = mat4.new()
+  out.data[0]  = side.x
+  out.data[4]  = side.y
+  out.data[8]  = side.z
+  out.data[1]  = new_up.x
+  out.data[5]  = new_up.y
+  out.data[9]  = new_up.z
+  out.data[2]  = forward.x
+  out.data[6]  = forward.y
+  out.data[10] = forward.z
+  out.data[15] = 1
+
+  return out
+end
+
+function mat4.from_ortho(left: number, right: number, top: number, bottom: number, near: number, far: number): mat4 <inline>
+  local out = mat4.new()
+  out.data[0]  =  2 / (right - left)
+  out.data[5]  =  2 / (top - bottom)
+  out.data[10] = -2 / (far - near)
+  out.data[12] = -((right + left) / (right - left))
+  out.data[13] = -((top + bottom) / (top - bottom))
+  out.data[14] = -((far + near) / (far - near))
+  out.data[15] =  1
+
+  return out
+end
+
+function mat4.from_perspective(fovy: number, aspect: number, near: number, far: number): mat4 <inline>
+  assert(aspect ~= 0)
+  assert(near   ~= far)
+
+  local t   = math.tan(math.rad(fovy) / 2)
+  local out = mat4.new()
+  out.data[0]  =  1 / (t * aspect)
+  out.data[5]  =  1 / t
+  out.data[10] = -(far + near) / (far - near)
+  out.data[11] = -1
+  out.data[14] = -(2 * far * near) / (far - near)
+  out.data[15] =  0
+
+  return out
+end
+
+function mat4.__mul(a: mat4, b: mat4): mat4 <inline>
+  local out = mat4.new()
+
+  out.data[0]  = a.data[0]  * b.data[0] + a.data[1]  * b.data[4] + a.data[2]  * b.data[8]  + a.data[3]  * b.data[12];
+  out.data[1]  = a.data[0]  * b.data[1] + a.data[1]  * b.data[5] + a.data[2]  * b.data[9]  + a.data[3]  * b.data[13];
+  out.data[2]  = a.data[0]  * b.data[2] + a.data[1]  * b.data[6] + a.data[2]  * b.data[10] + a.data[3]  * b.data[14];
+  out.data[3]  = a.data[0]  * b.data[3] + a.data[1]  * b.data[7] + a.data[2]  * b.data[11] + a.data[3]  * b.data[15];
+  out.data[4]  = a.data[4]  * b.data[0] + a.data[5]  * b.data[4] + a.data[6]  * b.data[8]  + a.data[7]  * b.data[12];
+  out.data[5]  = a.data[4]  * b.data[1] + a.data[5]  * b.data[5] + a.data[6]  * b.data[9]  + a.data[7]  * b.data[13];
+  out.data[6]  = a.data[4]  * b.data[2] + a.data[5]  * b.data[6] + a.data[6]  * b.data[10] + a.data[7]  * b.data[14];
+  out.data[7]  = a.data[4]  * b.data[3] + a.data[5]  * b.data[7] + a.data[6]  * b.data[11] + a.data[7]  * b.data[15];
+  out.data[8]  = a.data[8]  * b.data[0] + a.data[9]  * b.data[4] + a.data[10] * b.data[8]  + a.data[11] * b.data[12];
+  out.data[9]  = a.data[8]  * b.data[1] + a.data[9]  * b.data[5] + a.data[10] * b.data[9]  + a.data[11] * b.data[13];
+  out.data[10] = a.data[8]  * b.data[2] + a.data[9]  * b.data[6] + a.data[10] * b.data[10] + a.data[11] * b.data[14];
+  out.data[11] = a.data[8]  * b.data[3] + a.data[9]  * b.data[7] + a.data[10] * b.data[11] + a.data[11] * b.data[15];
+  out.data[12] = a.data[12] * b.data[0] + a.data[13] * b.data[4] + a.data[14] * b.data[8]  + a.data[15] * b.data[12];
+  out.data[13] = a.data[12] * b.data[1] + a.data[13] * b.data[5] + a.data[14] * b.data[9]  + a.data[15] * b.data[13];
+  out.data[14] = a.data[12] * b.data[2] + a.data[13] * b.data[6] + a.data[14] * b.data[10] + a.data[15] * b.data[14];
+  out.data[15] = a.data[12] * b.data[3] + a.data[13] * b.data[7] + a.data[14] * b.data[11] + a.data[15] * b.data[15];
+
+  return out
+end
+
+function mat4.invert(a: mat4): mat4 <inline>
+  tmp.data[0]  =  a.data[5] * a.data[10] * a.data[15] - a.data[5] * a.data[11] * a.data[14] - a.data[9] * a.data[6] * a.data[15] + a.data[9] * a.data[7] * a.data[14] + a.data[13] * a.data[6] * a.data[11] - a.data[13] * a.data[7] * a.data[10];
+  tmp.data[1]  = -a.data[1] * a.data[10] * a.data[15] + a.data[1] * a.data[11] * a.data[14] + a.data[9] * a.data[2] * a.data[15] - a.data[9] * a.data[3] * a.data[14] - a.data[13] * a.data[2] * a.data[11] + a.data[13] * a.data[3] * a.data[10];
+  tmp.data[2]  =  a.data[1] * a.data[6]  * a.data[15] - a.data[1] * a.data[7]  * a.data[14] - a.data[5] * a.data[2] * a.data[15] + a.data[5] * a.data[3] * a.data[14] + a.data[13] * a.data[2] * a.data[7]  - a.data[13] * a.data[3] * a.data[6];
+  tmp.data[3]  = -a.data[1] * a.data[6]  * a.data[11] + a.data[1] * a.data[7]  * a.data[10] + a.data[5] * a.data[2] * a.data[11] - a.data[5] * a.data[3] * a.data[10] - a.data[9]  * a.data[2] * a.data[7]  + a.data[9]  * a.data[3] * a.data[6];
+  tmp.data[4]  = -a.data[4] * a.data[10] * a.data[15] + a.data[4] * a.data[11] * a.data[14] + a.data[8] * a.data[6] * a.data[15] - a.data[8] * a.data[7] * a.data[14] - a.data[12] * a.data[6] * a.data[11] + a.data[12] * a.data[7] * a.data[10];
+  tmp.data[5]  =  a.data[0] * a.data[10] * a.data[15] - a.data[0] * a.data[11] * a.data[14] - a.data[8] * a.data[2] * a.data[15] + a.data[8] * a.data[3] * a.data[14] + a.data[12] * a.data[2] * a.data[11] - a.data[12] * a.data[3] * a.data[10];
+  tmp.data[6]  = -a.data[0] * a.data[6]  * a.data[15] + a.data[0] * a.data[7]  * a.data[14] + a.data[4] * a.data[2] * a.data[15] - a.data[4] * a.data[3] * a.data[14] - a.data[12] * a.data[2] * a.data[7]  + a.data[12] * a.data[3] * a.data[6];
+  tmp.data[7]  =  a.data[0] * a.data[6]  * a.data[11] - a.data[0] * a.data[7]  * a.data[10] - a.data[4] * a.data[2] * a.data[11] + a.data[4] * a.data[3] * a.data[10] + a.data[8]  * a.data[2] * a.data[7]  - a.data[8]  * a.data[3] * a.data[6];
+  tmp.data[8]  =  a.data[4] * a.data[9]  * a.data[15] - a.data[4] * a.data[11] * a.data[13] - a.data[8] * a.data[5] * a.data[15] + a.data[8] * a.data[7] * a.data[13] + a.data[12] * a.data[5] * a.data[11] - a.data[12] * a.data[7] * a.data[9];
+  tmp.data[9]  = -a.data[0] * a.data[9]  * a.data[15] + a.data[0] * a.data[11] * a.data[13] + a.data[8] * a.data[1] * a.data[15] - a.data[8] * a.data[3] * a.data[13] - a.data[12] * a.data[1] * a.data[11] + a.data[12] * a.data[3] * a.data[9];
+  tmp.data[10] =  a.data[0] * a.data[5]  * a.data[15] - a.data[0] * a.data[7]  * a.data[13] - a.data[4] * a.data[1] * a.data[15] + a.data[4] * a.data[3] * a.data[13] + a.data[12] * a.data[1] * a.data[7]  - a.data[12] * a.data[3] * a.data[5];
+  tmp.data[11] = -a.data[0] * a.data[5]  * a.data[11] + a.data[0] * a.data[7]  * a.data[9]  + a.data[4] * a.data[1] * a.data[11] - a.data[4] * a.data[3] * a.data[9]  - a.data[8]  * a.data[1] * a.data[7]  + a.data[8]  * a.data[3] * a.data[5];
+  tmp.data[12] = -a.data[4] * a.data[9]  * a.data[14] + a.data[4] * a.data[10] * a.data[13] + a.data[8] * a.data[5] * a.data[14] - a.data[8] * a.data[6] * a.data[13] - a.data[12] * a.data[5] * a.data[10] + a.data[12] * a.data[6] * a.data[9];
+  tmp.data[13] =  a.data[0] * a.data[9]  * a.data[14] - a.data[0] * a.data[10] * a.data[13] - a.data[8] * a.data[1] * a.data[14] + a.data[8] * a.data[2] * a.data[13] + a.data[12] * a.data[1] * a.data[10] - a.data[12] * a.data[2] * a.data[9];
+  tmp.data[14] = -a.data[0] * a.data[5]  * a.data[14] + a.data[0] * a.data[6]  * a.data[13] + a.data[4] * a.data[1] * a.data[14] - a.data[4] * a.data[2] * a.data[13] - a.data[12] * a.data[1] * a.data[6]  + a.data[12] * a.data[2] * a.data[5];
+  tmp.data[15] =  a.data[0] * a.data[5]  * a.data[10] - a.data[0] * a.data[6]  * a.data[9]  - a.data[4] * a.data[1] * a.data[10] + a.data[4] * a.data[2] * a.data[9]  + a.data[8]  * a.data[1] * a.data[6]  - a.data[8]  * a.data[2] * a.data[5];
+
+  for k, v in ipairs(tmp.data) do
+    a.data[k] = v
+  end
+
+  return a
+end
+
+function mat4.lookat(out: mat4, eye: vec3, at: vec3, up: vec3): mat4 <inline>
+  local forward = (at - eye):normalize()
+  local side = forward:cross(up):normalize()
+  local new_up = side:cross(forward)
+
+  out.data[3]  = 0
+  out.data[7]  = 0
+  out.data[11] = 0.0
+  out.data[0]  = side.x
+  out.data[1]  = new_up.x
+  out.data[2]  = -forward.x
+  out.data[4]  = side.y
+  out.data[5]  = new_up.y
+  out.data[6]  = -forward.y
+  out.data[8]  = side.z
+  out.data[9]  = new_up.z
+  out.data[10] = -forward.z
+  out.data[12] = -side:dot(eye)
+  out.data[13] = -new_up:dot(eye)
+  out.data[14] = forward:dot(eye)
+  out.data[15] = 1
+
+  return out
+end
+
+function mat4.translate(a: mat4, b: vec3): mat4 <inline>
+  tmp:identity()
+  tmp.data[12] = b.x
+  tmp.data[13] = b.y
+  tmp.data[14] = b.z
+  return a * tmp
+end
+
+function mat4.scale(a: mat4, b: vec3): mat4 <inline>
+  tmp:identity()
+  tmp.data[0] = b.x
+  tmp.data[5] = b.y
+  tmp.data[10] = b.z
+  return a * tmp
+end
