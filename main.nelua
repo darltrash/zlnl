@@ -38,7 +38,9 @@ require "libs.sdl2"
 require "libs.tinyfx"
 require "libs.math_extra"
 require "iterators"
+require "os"
 
+math.randomseed((@integer)(os.time()))
 defer SDL_Quit() end
 
 local window = SDL_CreateWindow("sdl2", 0, 0, 640, 420, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE)
@@ -111,10 +113,50 @@ local model = mat4.new():scale(vec3{x=30, y=30, z=1}):translate(vec3{x=200, y=0,
 local modelUniform = tfx_uniform_new("model", tfx_uniform_type.MAT4, 1)
 tfx_set_uniform(&modelUniform, &model.data, 1);
 
+local colorUniform = tfx_uniform_new("mainColor", tfx_uniform_type.VEC4, 1)
+local color: [4]float32 = {1, 1, 1, 1}
+tfx_set_uniform(&colorUniform, &color, 1)
+
+local lightUniform = tfx_uniform_new("light", tfx_uniform_type.VEC4, 1)
+local light: [4]float32 = {1, 79/255, 196/255, 1} -- pink :)
+tfx_set_uniform(&lightUniform, &light, 1)
+
+local darkUniform = tfx_uniform_new("dark", tfx_uniform_type.VEC4, 1)
+local dark: [4]float32 = {22/255, 22/255, 27/255, 1} -- eigengrau B)
+tfx_set_uniform(&darkUniform, &dark, 1)
+
+local intensityUniform = tfx_uniform_new("intensity", tfx_uniform_type.FLOAT, 1)
+local intensity: float32 = 1
+tfx_set_uniform(&intensityUniform, &intensity, 1)
+
+local amountUniform = tfx_uniform_new("amount", tfx_uniform_type.FLOAT, 1)
+local amount: float32 = 1
+tfx_set_uniform(&amountUniform, &amount, 1)
+
+local entity = @record {
+    x: number, y: number, vx: number, vy: number
+}
+
+local entitylist: [101]entity
+
+##for x=0, 100 do -- Comptime bullshit, baby!
+    entitylist[#[x]#] = entity{
+        x  = math.random(0, g_width),
+        y  = math.random(0, g_height),
+        vx = math.random(-100, 100)/900,
+        vy = math.random(-100, 100)/900
+    }
+##end
+
+local now: uint64 = SDL_GetPerformanceCounter()
+local last: uint64 = 0
+local delta: float64 = 0
+
 local running = true
 while running do
-    tfx_set_uniform(&modelUniform, &model.data, 1);
-    tfx_set_uniform(&projectionUniform, &projection.data, 1);
+    last = now
+    now = SDL_GetPerformanceCounter()
+    delta = (@float64)((now - last)*1000 / (@cdouble)(SDL_GetPerformanceFrequency()));
 
     local event: SDL_Event
     while (SDL_PollEvent(&event) == 1) do
@@ -128,7 +170,7 @@ while running do
                     tfx_reset_flags.NONE | tfx_reset_flags.DEBUG_OVERLAY | tfx_reset_flags.DEBUG_OVERLAY_STATS
                     | tfx_reset_flags.REPORT_GPU_TIMINGS
                 );
-                projection = mat4.from_ortho(0, g_width, g_height, 0, -10, 10)
+                projection = mat4.from_ortho(0, g_width, 0, g_height, -10, 10)
                 tfx_set_uniform(&projectionUniform, &projection.data, 1);
             end
         end
@@ -137,15 +179,37 @@ while running do
     tfx_view_set_clear_color(back, 0x16161bff);
     tfx_view_set_clear_depth(back, 1.0);
     tfx_view_set_name(back, "Forward Pass");
-    tfx_set_vertices(&vbo, 6);
-    
-	tfx_set_state(0
-		| TFX_STATE_RGB_WRITE
-		| TFX_STATE_ALPHA_WRITE
-		| TFX_STATE_BLEND_ALPHA
-	);
-    
-	tfx_submit(back, program, false);
+
+    for z, item in mipairs(entitylist) do
+        local gray = ((z/#entitylist) * 1)
+
+        item.x = item.x + item.vx * delta * gray
+        item.y = item.y + item.vy * delta * gray
+
+        if (item.x < 0) or ((item.x+30) > g_width) then
+            item.vx = -item.vx
+        end
+
+        if (item.y < 0) or ((item.y+30) > g_height) then
+            item.vy = -item.vy
+        end
+        
+        model:identity()
+        model = model:scale(vec3{x=30, y=30, z=1}):translate(vec3{x=item.x, y=item.y, z=z/#entitylist})
+        tfx_set_uniform(&modelUniform, &model.data, 1);
+
+        color = {gray, gray, gray, 1}
+
+        tfx_set_vertices(&vbo, 6);
+        tfx_set_state(0
+            | TFX_STATE_RGB_WRITE
+            | TFX_STATE_ALPHA_WRITE
+            | TFX_STATE_BLEND_ALPHA
+        );
+        
+        tfx_set_uniform(&colorUniform, &color, 1)
+        tfx_submit(back, program, false);
+    end
 
     tfx_frame();
     SDL_GL_SwapWindow(window);

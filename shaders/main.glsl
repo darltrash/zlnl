@@ -20,10 +20,18 @@
     out vec4 out_color;
 
     uniform sampler2D image;
-    uniform vec4 spriteColor;
+    uniform vec4 mainColor;
+
+    uniform vec4 dark;
+    uniform vec4 light;
+    uniform float intensity;
+    uniform float amount;
 
     void main()
     {    
-        out_color = vec4(TexCoords, 1, 1);// * texture(image, TexCoords);
+        vec4 c = mainColor;// * texture(image, TexCoords);
+        float cluma = 1.-dot(c.rgb, vec3(0.299, 0.587, 0.114));
+        vec4 o = mix(dark, light, 1.-(cluma*intensity)); //  
+        out_color = mix(c, o, amount);
     }  
 #endif
